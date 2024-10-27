@@ -43,7 +43,7 @@ export async function prepareChannel () {
 }
 
 export async function routeFromDeviceToServer () {
-  device.reverseTcpPort(7007)
+  await device.reverseTcpPort(7007)
 }
 
 export async function closeChannel () {
