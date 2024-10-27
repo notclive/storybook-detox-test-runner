@@ -1,5 +1,4 @@
 import events, { CHANNEL_CREATED, SET_CURRENT_STORY, STORY_RENDERED, STORY_UNCHANGED } from '@storybook/core/core-events'
-import assert from 'assert'
 import { device } from 'detox'
 import { WebSocket, WebSocketServer } from 'ws'
 
@@ -52,7 +51,9 @@ export async function closeChannel () {
 
 export async function changeStory (storyId: string) {
   const socket = getChannel().client?.socket
-  assert(socket, 'Storybook running on device should have connected by now')
+  if (socket === undefined) {
+    throw new Error('Storybook running on device should have connected by now')
+  }
   const waitForRender = withTimeout(
     'App timed out changing stories',
     resolveWhenStoryRendered(socket, storyId),
