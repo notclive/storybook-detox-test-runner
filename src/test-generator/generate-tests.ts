@@ -16,7 +16,7 @@ export function generateTests ({
 }) {
   const csfPatterns = getCsfPatterns(storybookConfigDirectory)
 
-  rmSync(testDirectory, { recursive: true })
+  rmSync(testDirectory, { recursive: true, force: true })
   mkdirSync(testDirectory, { recursive: true })
 
   for (const csfsToTest of findCsfsToTest(
