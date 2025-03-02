@@ -4,11 +4,15 @@ import { getDirectories } from '../get-directories'
 import { generateTests } from '../test-generator/generate-tests'
 
 const directories = getDirectories()
-generateTests(directories)
+const { csfsToTest } = generateTests(directories)
+const storyPathsAsRegex = csfsToTest.map(literal => literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
 
 export default {
   preset: 'react-native',
   rootDir: directories.projectRoot,
+  transform: {
+    [storyPathsAsRegex]: join(__dirname, 'composing-transformer')
+  },
   testMatch: [`${directories.testDirectory}/*.spec.js`],
   globalSetup: join(__dirname, 'global-setup'),
   globalTeardown: join(__dirname, 'global-teardown'),
