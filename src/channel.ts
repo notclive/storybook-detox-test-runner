@@ -1,4 +1,4 @@
-import events, { CHANNEL_CREATED, SET_CURRENT_STORY, STORY_RENDERED, STORY_UNCHANGED } from '@storybook/core/core-events'
+import events, { CHANNEL_CREATED, SET_CURRENT_STORY, STORY_RENDERED, STORY_THREW_EXCEPTION, STORY_UNCHANGED } from '@storybook/core/core-events'
 import { device } from 'detox'
 import { WebSocket, WebSocketServer } from 'ws'
 
@@ -64,9 +64,13 @@ export async function changeStory (storyId: string) {
 }
 
 function resolveWhenStoryRendered (socket: WebSocket, storyId: string) {
-  return new Promise<void>(resolve => {
+  return new Promise<void>((resolve, reject) => {
     socket.on('message', (buffer: Buffer) => {
       const message = JSON.parse(buffer.toString('utf-8')) as Message
+      if ([STORY_THREW_EXCEPTION].includes(message.type)) {
+        const storyError = message.args[0]
+        reject('Story threw exception during render: ' + JSON.stringify(storyError))
+      }
       if ([STORY_RENDERED, STORY_UNCHANGED].includes(message.type) && message.args[0] === storyId) {
         resolve()
       }
