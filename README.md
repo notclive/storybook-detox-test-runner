@@ -75,7 +75,7 @@ The test runner generates tests in your Storybook config directory, these don't 
 
 ## Writing a test
 
-Give your story a `play` function, access Detox functions like `element` and `by` from the `canvasElement` argument to find and interact with elements.
+Give your story a `play` function, access Detox functions like `element` and `by` from the `detox` argument to find and interact with elements.
 
 ```typescript
 // counter.stories.tsx
@@ -88,7 +88,7 @@ export default {
 } satisfies Meta<typeof Counter>
 
 export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Counter> = {
-  play: async ({ canvasElement: { by, element, waitFor } }) => {
+  play: async ({ detox: { by, element, waitFor } }) => {
     // Wait for initial render.
     await waitFor(element(by.text(/Count up/))).toBeVisible().withTimeout(1000)
 

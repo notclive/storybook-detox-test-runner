@@ -83,6 +83,6 @@ function generateTestForStory (variableName: string, story: StaticStory) {
   return `
     test('${story.name}', async function () {
       await channel.changeStory('${story.id}')
-      await story.${variableName}.play?.({ canvasElement: detox })
+      await story.${variableName}.play?.({ detox })
     })\n\n`
 }
