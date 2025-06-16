@@ -16,7 +16,7 @@ type DetoxStoryAnnotations<
     TArgs = Args,
     TRequiredArgs = Partial<TArgs>
 > = Omit<StoryAnnotations<TRenderer, TArgs, TRequiredArgs>, 'play'> & {
-    play: (
+    play?: (
         context: StoryContext<TRenderer, TArgs> 
           & { detox: typeof detox }
     ) => Promise<void> | void
