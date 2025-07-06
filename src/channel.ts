@@ -1,5 +1,5 @@
-import events, { CHANNEL_CREATED, SET_CURRENT_STORY, STORY_RENDERED, STORY_THREW_EXCEPTION, STORY_UNCHANGED } from '@storybook/core/core-events'
 import { device } from 'detox'
+import events, { CHANNEL_CREATED, SET_CURRENT_STORY, STORY_RENDERED, STORY_THREW_EXCEPTION, STORY_UNCHANGED } from 'storybook/internal/core-events'
 import { WebSocket, WebSocketServer } from 'ws'
 
 interface Channel {

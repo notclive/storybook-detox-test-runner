@@ -1,8 +1,8 @@
-import { getStoryTitle, serverRequire } from '@storybook/core/common'
-import { loadCsf, type StaticStory } from '@storybook/core/csf-tools'
-import type { StoriesEntry, StorybookConfig } from '@storybook/core/types'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { basename, extname, join } from 'path'
+import { getStoryTitle, serverRequire } from 'storybook/internal/common'
+import { loadCsf, type StaticStory } from 'storybook/internal/csf-tools'
+import type { StoriesEntry, StorybookConfig } from 'storybook/internal/types'
 import { findStoriesToTest as findCsfsToTest } from './find-stories-to-test'
 
 export function generateTests ({

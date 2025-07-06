@@ -1,6 +1,6 @@
-import type { Args, Renderer, StoryAnnotations, StoryContext } from '@storybook/core/types'
 import type detox from 'detox'
 import type { ComponentProps, ComponentType } from 'react'
+import type { Args, Renderer, StoryAnnotations, StoryContext } from 'storybook/internal/types'
 
 // I've:
 // 1) Taken the definition of StoryObj from @storybook/react

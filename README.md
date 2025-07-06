@@ -79,7 +79,7 @@ Give your story a `play` function, access Detox functions like `element` and `by
 
 ```typescript
 // counter.stories.tsx
-import { type Meta } from '@storybook/react'
+import { type Meta } from '@storybook/react-native'
 import type { DetoxStoryObj } from 'storybook-detox-test-runner/types'
 import Counter from 'src/components/counter'
 

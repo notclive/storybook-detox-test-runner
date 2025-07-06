@@ -1,7 +1,7 @@
-import { normalizeStories, normalizeStoryPath } from '@storybook/core/common'
-import type { StoriesEntry } from '@storybook/core/types'
 import fs from 'fs'
 import { join, relative } from 'path'
+import { normalizeStories, normalizeStoryPath } from 'storybook/internal/common'
+import type { StoriesEntry } from 'storybook/internal/types'
 
 export function findStoriesToTest (
   stories: StoriesEntry[],
