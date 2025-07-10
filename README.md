@@ -108,3 +108,26 @@ export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Cou
 # Running the test
 
 Run Detox as normal with `yarn detox test`
+
+# Per-test configuration
+
+You can trigger advanced behaviour for individual tests by adding a `detox` property to the story.
+
+```typescript
+// counter.stories.tsx
+...
+
+export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Counter> = {
+  detox: {
+    onlyOnOperatingSystems: ['ios'] // Only run the test on iOS.
+    launch: { // Arguments passed to Detox's `device.launchApp`.
+      permissions: {
+        location: 'inuse'
+      }
+    }
+  },
+  play: async ({ detox }) => {
+    ...
+  }
+}
+```

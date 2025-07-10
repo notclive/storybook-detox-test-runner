@@ -16,6 +16,10 @@ type DetoxStoryAnnotations<
     TArgs = Args,
     TRequiredArgs = Partial<TArgs>
 > = Omit<StoryAnnotations<TRenderer, TArgs, TRequiredArgs>, 'play'> & {
+    detox?: {
+        onlyOnOperatingSystems?: ('ios' | 'android')[]
+        launch?: Detox.DeviceLaunchAppConfig
+    }
     play?: (
         context: StoryContext<TRenderer, TArgs> 
           & { detox: typeof detox }

@@ -71,8 +71,14 @@ function generateJestTest (csfFilePath: string, stories: Record<string, StaticSt
 
     beforeAll(async () => {
       await channel.routeFromDeviceToServer()
-      await device.launchApp()
     })
+
+    function testOrSkip (onlyOnOperatingSystems) {
+      if (onlyOnOperatingSystems === undefined) {
+        return test
+      }
+      return onlyOnOperatingSystems.includes(device.getPlatform()) ? test : test.skip
+    }
 
     ${Object.entries(stories)
         .map(([variableName, story]) => generateTestForStory(variableName, story))
@@ -81,7 +87,8 @@ function generateJestTest (csfFilePath: string, stories: Record<string, StaticSt
 
 function generateTestForStory (variableName: string, story: StaticStory) {
   return `
-    test('${story.name}', async function () {
+    testOrSkip(story.${variableName}.detox?.onlyOnOperatingSystems)('${story.name}', async function () {
+      await device.launchApp(story.${variableName}.detox?.launch)
       await channel.changeStory('${story.id}')
       await story.${variableName}.play?.({ detox })
     })\n\n`

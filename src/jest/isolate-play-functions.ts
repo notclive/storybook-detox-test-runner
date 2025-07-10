@@ -12,14 +12,17 @@ export default function () {
           path.node.left.object.name === 'exports' &&
           path.node.right.type === 'ObjectExpression'
         ) {
-          path.node.right.properties = path.node.right.properties.filter((property) => !isNotPlayFunction(property))
+          path.node.right.properties = path.node.right.properties.filter((property) => isNecessaryPartOfStory(property))
         }
       }
     } satisfies Visitor
   }
 }
 
-function isNotPlayFunction (property: ObjectMethod | ObjectProperty | SpreadElement) {
-  return (property.type === 'ObjectProperty' && property.key.type === 'Identifier' && property.key.name !== 'play') ||
-    (property.type === 'ObjectMethod' && property.key.type === 'Identifier' && property.key.name !== 'play')
+function isNecessaryPartOfStory (property: ObjectMethod | ObjectProperty | SpreadElement) {
+  // May or may not be necessary, I don't know.
+  if (property.type === 'SpreadElement') {
+    return true
+  }
+  return property.key.type === 'Identifier' && ['play', 'detox'].includes(property.key.name)
 }

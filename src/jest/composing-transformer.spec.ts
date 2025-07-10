@@ -38,12 +38,15 @@ exports.MyStory = {
 `)
 })
 
-test('given exports with non-play properties, then non-play properties are removed', () => {
+test('given exports with properties used by storybook, then properties other than play and detox are removed', () => {
   // When
   const transformed = composingTransformer.process(`
     exports.MyStory = {
       args: {
         height: 200
+      },
+      detox: {
+        onlyOnOperatingSystems: ['ios']
       },
       parameters: {
         backgrounds: {
@@ -58,6 +61,13 @@ test('given exports with non-play properties, then non-play properties are remov
     exports.MyOtherStory = {
       args: {
         height: 200
+      },
+      detox: {
+        launch: {
+          permissions: {
+            location: 'never'
+          }
+        }
       },
       parameters: {
         backgrounds: {
@@ -77,11 +87,21 @@ test('given exports with non-play properties, then non-play properties are remov
     // Then
     expect(stripSourceMap(transformed?.code)).toMatchInlineSnapshot(`
 "exports.MyStory = {
+  detox: {
+    onlyOnOperatingSystems: ['ios']
+  },
   play: function () {
     console.log('This function should remain');
   }
 };
 exports.MyOtherStory = {
+  detox: {
+    launch: {
+      permissions: {
+        location: 'never'
+      }
+    }
+  },
   play: function () {
     console.log('This function should also remain');
   }
@@ -90,35 +110,7 @@ exports.MyOtherStory = {
 `)
 })
 
-test('given exports with non-play properties, then non-play properties are removed', () => {
-  // When
-  const transformed = composingTransformer.process(`
-    exports.MyStory = {
-      render: function () {
-        return React.createElement(Text, null, 'This should be removed along with the import')
-      },
-      play: function () {
-        console.log('This function should remain')
-      }
-    }
-    `, 'ficticious-file.tsx', {
-      config: {
-        cwd: '/',
-      },
-    } as never)
-
-    // Then
-    expect(stripSourceMap(transformed?.code)).toMatchInlineSnapshot(`
-"exports.MyStory = {
-  play: function () {
-    console.log('This function should remain');
-  }
-};
-"
-`)
-})
-
-test('given require used by stripped function, then require is stripped too', () => {
+test('given `require` used by stripped function, then `require` is stripped too', () => {
   // When
   const transformed = composingTransformer.process(`
     var ReactNative = require('react-native')
