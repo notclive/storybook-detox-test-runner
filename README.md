@@ -4,8 +4,12 @@ This project enables you to test your [Storybook for React Native](https://githu
 
 ## How it works
 
-The test runner injects itself into your Detox tests by overridding the Jest configuration.
-Before the tests run it generates a Jest test file for each of your Storybook story files.
+The test runner injects itself into your Detox tests by overriding the Jest configuration.
+Before the tests run it generates Jest test files for your Storybook story files. Generated spec files are written into `<STORYBOOK_CONFIG_DIR>/.detox-tests`, mirroring the relative path of each story file. This avoids filename collisions when multiple stories share the same basename (for example `index.stories.tsx`).
+
+> [!NOTE]
+> The generated Jest test name uses the Storybook `story.id` to ensure uniqueness across different files (for example multiple `Default` stories).
+
 Each test uses Storybook's websockets to render the appropriate story, it then runs your story's `play` function, which may use the Detox API.
 
 # Getting started

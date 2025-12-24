@@ -6,6 +6,7 @@ import { generateTests } from '../test-generator/generate-tests'
 const directories = getDirectories()
 const { csfsToTest } = generateTests(directories)
 const storyPathsAsRegex = csfsToTest.map(literal => literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+const testDirGlobBase = directories.testDirectory.replace(/\\/g, '/')
 
 export default {
   preset: 'react-native',
@@ -13,7 +14,7 @@ export default {
   transform: {
     [storyPathsAsRegex]: join(__dirname, 'composing-transformer')
   },
-  testMatch: [`${directories.testDirectory}/*.spec.js`],
+  testMatch: [`${testDirGlobBase}/**/*.spec.js`],
   globalSetup: join(__dirname, 'global-setup'),
   globalTeardown: join(__dirname, 'global-teardown'),
   // Detox defaults, see https://wix.github.io/Detox/docs/config/testRunner#jest-config.
