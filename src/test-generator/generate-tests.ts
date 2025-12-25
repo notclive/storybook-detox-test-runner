@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
-import { basename, extname, join } from 'path'
+import { basename, dirname, extname, join, relative } from 'path'
 import { getStoryTitle, serverRequire } from 'storybook/internal/common'
 import { loadCsf, type StaticStory } from 'storybook/internal/csf-tools'
 import type { StoriesEntry, StorybookConfig } from 'storybook/internal/types'
@@ -28,7 +28,14 @@ export function generateTests ({
     const code = readFileSync(csfToTest, { encoding: 'utf-8' })
     const storiesInCsf = parseCsf(code, csfToTest, csfPatterns, storybookConfigDirectory)
     const jestTest = generateJestTest(csfToTest, storiesInCsf)
-    writeFileSync(join(testDirectory, `${basename(csfToTest, extname(csfToTest))}.spec.js`), jestTest)
+
+    // make spec path unique by mirroring the CSF relative path under .detox-tests
+    const relCsfPath = relative(projectRoot, csfToTest)
+    const outDir = join(testDirectory, dirname(relCsfPath))
+    mkdirSync(outDir, { recursive: true })
+
+    const outFile = join(outDir, `${basename(csfToTest, extname(csfToTest))}.spec.js`)
+    writeFileSync(outFile, jestTest)
   }
 
   return { csfsToTest }
