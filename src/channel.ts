@@ -107,13 +107,13 @@ function rejectAllPending(err: Error) {
 
   if (!pending || pending.size === 0) return
 
-  for (const [, p] of pending) {
+  pending.forEach((p) => {
     try {
       p.reject(err)
     } catch {
       // ignore
     }
-  }
+  })
 
   pending.clear()
 }
