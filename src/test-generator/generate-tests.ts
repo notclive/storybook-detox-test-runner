@@ -93,9 +93,8 @@ function generateJestTest (csfFilePath: string, stories: Record<string, StaticSt
 }
 
 function generateTestForStory (variableName: string, story: StaticStory) {
-  // use story.id as test name to avoid collisions like "Default"
   return `
-    testOrSkip(story.${variableName}.detox?.onlyOnOperatingSystems)('${story.id}', async function () {
+    testOrSkip(story.${variableName}.detox?.onlyOnOperatingSystems)('${story.name}', async function () {
       await device.launchApp(story.${variableName}.detox?.launch)
       await channel.changeStory('${story.id}')
       await story.${variableName}.play?.({ detox })
