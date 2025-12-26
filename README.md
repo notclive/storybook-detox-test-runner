@@ -135,3 +135,13 @@ export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Cou
   }
 }
 ```
+
+# Environment variables
+
+| Variable                            | Default      | Description                                                                     |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------- |
+| `STORYBOOK_CONFIG_DIR`              | `.storybook` | Storybook config directory. Generated tests are written to `<dir>/.detox-tests` |
+| `STORYBOOK_WS_PORT`                 | `7007`       | WebSocket server port for communication between test runner and device          |
+| `STORYBOOK_WS_CONNECT_TIMEOUT_MS`   | `60000`      | Timeout (ms) waiting for device to connect. Increase if app startup is slow     |
+| `STORYBOOK_CHANGE_STORY_TIMEOUT_MS` | `20000`      | Timeout (ms) waiting for story to render after switching                        |
+| `STORYBOOK_CHANNEL_DEBUG`           | -            | Set to `1` to enable debug logging for WebSocket channel                        |
