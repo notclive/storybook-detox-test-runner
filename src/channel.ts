@@ -18,6 +18,7 @@ const log = (...args: unknown[]) => {
     console.log('[storybook-detox-channel]', ...args)
   }
 }
+
 interface Channel {
   server?: WebSocketServer
   client?: {
@@ -210,11 +211,27 @@ function attachClientSocket(socket: WebSocket) {
   // Without this, tests would hang until timeout when device disconnects.
   socket.on('close', () => {
     log('client socket closed')
+
+    // Clear stale client reference so waitForOpenClientSocket
+    // won't see a closed socket and can wait for reconnect.
+    const ch = getChannel()
+
+    if (ch.client?.socket === socket) {
+      ch.client = null
+    }
+
     rejectAllPending(new Error('Storybook device socket closed'))
   })
 
   socket.on('error', (e: any) => {
     log('client socket error:', e?.message ?? e)
+
+    const ch = getChannel()
+
+    if (ch.client?.socket === socket) {
+      ch.client = null
+    }
+
     rejectAllPending(new Error('Storybook device socket error: ' + (e?.message ?? String(e))))
   })
 }
@@ -351,6 +368,20 @@ export async function changeStory(storyId: string) {
 
   const connectTimeoutMs = Number(process.env.STORYBOOK_WS_CONNECT_TIMEOUT_MS || 60_000)
   const changeTimeoutMs = Number(process.env.STORYBOOK_CHANGE_STORY_TIMEOUT_MS || 20_000)
+
+  // If no client or socket closed, try to restart app to force reconnect
+  const existingSocket = getChannel().client?.socket
+
+  if (!existingSocket || (existingSocket as any).readyState !== WS_OPEN) {
+    log('No open socket, restarting app to force reconnect')
+
+    try {
+      await device.launchApp({ newInstance: true })
+    } catch (e: any) {
+      log('launchApp failed:', e?.message ?? e)
+    }
+  }
+
   const socket = await waitForOpenClientSocket(connectTimeoutMs)
 
   // Create pending BEFORE send to avoid race condition
