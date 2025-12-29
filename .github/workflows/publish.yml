@@ -1,0 +1,23 @@
+name: Publish package to npmjs
+on:
+  release:
+    types: [published]
+
+permissions:
+  id-token: write # Required for OIDC between Github and npmjs
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: corepack enable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: yarn
+      - run: yarn test
+      - run: yarn build
+      - run: npm version "${{ github.event.release.tag_name }}" --allow-same-version --no-git-tag-version
+      - run: npm publish
