@@ -21,6 +21,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "test": "jest src"
   },
   "devDependencies": {
