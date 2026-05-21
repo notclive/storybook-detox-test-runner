@@ -1,13 +1,11 @@
 import { device } from 'detox'
-import events, {
-  CHANNEL_CREATED,
-  SET_CURRENT_STORY,
-  STORY_RENDERED,
-  STORY_THREW_EXCEPTION,
-  STORY_UNCHANGED,
-} from 'storybook/internal/core-events'
 import { WebSocket, WebSocketServer } from 'ws'
 
+const CHANNEL_CREATED = 'channelCreated'
+const SET_CURRENT_STORY = 'setCurrentStory'
+const STORY_RENDERED = 'storyRendered'
+const STORY_THREW_EXCEPTION = 'storyThrewException'
+const STORY_UNCHANGED = 'storyUnchanged'
 const WS_OPEN = 1
 const PORT = Number(process.env.STORYBOOK_WS_PORT || 7007)
 const DEBUG = process.env.STORYBOOK_CHANNEL_DEBUG === '1'
@@ -38,7 +36,7 @@ type PendingStoryRender = {
 }
 
 type Message = {
-  type: events
+  type: string
   from?: string
   args?: any[]
 }

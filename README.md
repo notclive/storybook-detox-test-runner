@@ -12,6 +12,12 @@ Before the tests run it generates Jest test files for your Storybook story files
 
 Each test uses Storybook's websockets to render the appropriate story, it then runs your story's `play` function, which may use the Detox API.
 
+# Compatibility
+
+- Storybook 9 and 10 are supported.
+- TypeScript users need TypeScript 5.3 or newer because the public types use `resolution-mode` import attributes for Storybook ESM types.
+- The programmatic `generateTests()` export is async in the Storybook 10 compatible release. Code that imports `storybook-detox-test-runner/test-generator/generate-tests.js` must `await generateTests(...)`.
+
 # Getting started
 
 1. Install `storybook-detox-test-runner`

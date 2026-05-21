@@ -1,13 +1,11 @@
 import { afterEach, expect, jest, test } from '@jest/globals'
 import { createServer } from 'net'
-import {
-  SET_CURRENT_STORY,
-  STORY_RENDERED,
-  STORY_THREW_EXCEPTION,
-  STORY_UNCHANGED,
-} from 'storybook/internal/core-events'
 import { WebSocket } from 'ws'
 
+const SET_CURRENT_STORY = 'setCurrentStory'
+const STORY_RENDERED = 'storyRendered'
+const STORY_THREW_EXCEPTION = 'storyThrewException'
+const STORY_UNCHANGED = 'storyUnchanged'
 const WS_CLOSED = 3
 const ORIGINAL_ENV = {
   STORYBOOK_CHANNEL_DEBUG: process.env.STORYBOOK_CHANNEL_DEBUG,
@@ -142,7 +140,7 @@ async function importChannel (port: number, changeStoryTimeoutMs: number) {
 
   jest.doMock('detox', () => ({ device }))
 
-  const channel = await import('./channel')
+  const channel = require('./channel') as ChannelModule
 
   importedChannel = channel
 

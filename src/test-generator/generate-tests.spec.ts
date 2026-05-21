@@ -1,19 +1,26 @@
-import { afterEach, expect, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { mockStorybookInternals, restoreStorybookInternalsMock } from '../storybook-internals.spec-support'
 import { generateTests } from './generate-tests'
 
 const tempProjects: string[] = []
 
+beforeEach(() => {
+  mockStorybookInternals()
+})
+
 afterEach(() => {
+  restoreStorybookInternalsMock()
+
   for (const projectRoot of tempProjects.splice(0)) {
     clearRequireCache(projectRoot)
     rmSync(projectRoot, { recursive: true, force: true })
   }
 })
 
-test('given storybook main with stories, then specs are generated for matching CSF files', () => {
+test('given storybook main with stories, then specs are generated for matching CSF files', async () => {
   // Given
   const project = createTempProject()
   const storyFile = project.writeStory('src/Button.stories.tsx', `
@@ -35,7 +42,7 @@ test('given storybook main with stories, then specs are generated for matching C
   `)
 
   // When
-  const result = generateTests(project.directories)
+  const result = await generateTests(project.directories)
 
   // Then
   expect(result.csfsToTest).toEqual([storyFile])
@@ -52,46 +59,98 @@ test('given storybook main with stories, then specs are generated for matching C
   expect(generatedSpec).toContain('await story.Primary.play?.({ detox })')
 })
 
-test('given stories with the same basename in different directories, then output paths do not collide', () => {
+test('given stories with the same basename in different directories, then output paths do not collide', async () => {
   // Given
   const project = createTempProject()
   project.writeStory('src/a/Button.stories.tsx', storySource('Components/A/Button'))
   project.writeStory('src/b/Button.stories.tsx', storySource('Components/B/Button'))
 
   // When
-  generateTests(project.directories)
+  await generateTests(project.directories)
 
   // Then
   expect(existsSync(join(project.directories.testDirectory, 'src/a/Button.stories.spec.js'))).toBe(true)
   expect(existsSync(join(project.directories.testDirectory, 'src/b/Button.stories.spec.js'))).toBe(true)
 })
 
-test('given main.js is missing, then a readable error is thrown', () => {
+test('given main.js stories is a function, then specs are generated from resolved stories', async () => {
   // Given
   const project = createTempProject({ mainSource: null })
+  rewriteMainSource(project, `
+    module.exports = {
+      stories: async (entries, options) => {
+        if (entries.length !== 0) {
+          throw new Error('Expected raw stories entries')
+        }
+        if (options.configDir !== ${JSON.stringify(project.directories.storybookConfigDirectory)}) {
+          throw new Error('Expected configDir option')
+        }
+        if (options.cwd !== ${JSON.stringify(project.directories.projectRoot)}) {
+          throw new Error('Expected cwd option')
+        }
+        return ['../src/**/*.stories.tsx']
+      }
+    }
+  `)
+  const storyFile = project.writeStory('src/Button.stories.tsx', storySource('Components/Button'))
 
-  // When / Then
-  expect(() => generateTests(project.directories)).toThrow(
-    `Could not load main.js in ${project.directories.storybookConfigDirectory}.`
-  )
+  // When
+  const result = await generateTests(project.directories)
+
+  // Then
+  expect(result.csfsToTest).toEqual([storyFile])
 })
 
-test('given main.js does not define stories, then a readable error is thrown', () => {
+test('given main.js stories function returns a non-array, then a readable error is thrown', async () => {
   // Given
-  const project = createTempProject({ mainSource: 'module.exports = {}\n' })
+  const project = createTempProject({
+    mainSource: 'module.exports = { stories: async () => "not an array" }\n'
+  })
 
   // When / Then
-  expect(() => generateTests(project.directories)).toThrow(
+  await expect(generateTests(project.directories)).rejects.toThrow(
     `Could not find stories in main.js in "${project.directories.storybookConfigDirectory}".`
   )
 })
 
-test('given main.js defines empty stories, then a readable error is thrown', () => {
+test('given main.js stories function throws, then a readable error is thrown', async () => {
+  // Given
+  const project = createTempProject({
+    mainSource: 'module.exports = { stories: async () => { throw new Error("boom") } }\n'
+  })
+
+  // When / Then
+  await expect(generateTests(project.directories)).rejects.toThrow(
+    `Could not load stories from main.js in "${project.directories.storybookConfigDirectory}": boom`
+  )
+})
+
+test('given main.js is missing, then a readable error is thrown', async () => {
+  // Given
+  const project = createTempProject({ mainSource: null })
+
+  // When / Then
+  await expect(generateTests(project.directories)).rejects.toThrow(
+    `Could not load main.js in ${project.directories.storybookConfigDirectory}.`
+  )
+})
+
+test('given main.js does not define stories, then a readable error is thrown', async () => {
+  // Given
+  const project = createTempProject({ mainSource: 'module.exports = {}\n' })
+
+  // When / Then
+  await expect(generateTests(project.directories)).rejects.toThrow(
+    `Could not find stories in main.js in "${project.directories.storybookConfigDirectory}".`
+  )
+})
+
+test('given main.js defines empty stories, then a readable error is thrown', async () => {
   // Given
   const project = createTempProject({ mainSource: 'module.exports = { stories: [] }\n' })
 
   // When / Then
-  expect(() => generateTests(project.directories)).toThrow(
+  await expect(generateTests(project.directories)).rejects.toThrow(
     `Could not find stories in main.js in "${project.directories.storybookConfigDirectory}".`
   )
 })
@@ -146,6 +205,13 @@ function storySource (title: string) {
       name: 'Primary button'
     }
   `
+}
+
+function rewriteMainSource (
+  project: ReturnType<typeof createTempProject>,
+  mainSource: string
+) {
+  writeFileSync(join(project.directories.storybookConfigDirectory, 'main.js'), mainSource)
 }
 
 function clearRequireCache (projectRoot: string) {

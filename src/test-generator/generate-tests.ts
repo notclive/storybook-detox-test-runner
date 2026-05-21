@@ -1,11 +1,9 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { basename, dirname, extname, join, relative } from 'path'
-import { getStoryTitle, serverRequire } from 'storybook/internal/common'
-import { loadCsf, type StaticStory } from 'storybook/internal/csf-tools'
-import type { StoriesEntry, StorybookConfig } from 'storybook/internal/types'
+import { loadStorybookCommon, loadStorybookCsfTools, type StaticStory, type StoriesConfig, type StoriesEntry } from '../storybook-internals'
 import { findStoriesToTest as findCsfsToTest } from './find-stories-to-test'
 
-export function generateTests ({
+export async function generateTests ({
   projectRoot,
   storybookConfigDirectory,
   testDirectory
@@ -14,19 +12,19 @@ export function generateTests ({
   storybookConfigDirectory: string;
   testDirectory: string;
 }) {
-  const csfPatterns = getCsfPatterns(storybookConfigDirectory)
+  const csfPatterns = await getCsfPatterns(storybookConfigDirectory, projectRoot)
 
   rmSync(testDirectory, { recursive: true, force: true })
   mkdirSync(testDirectory, { recursive: true })
 
-  const csfsToTest = findCsfsToTest(
+  const csfsToTest = await findCsfsToTest(
     csfPatterns,
     { projectRoot, storybookConfigDirectory }
   )
 
   for (const csfToTest of csfsToTest) {
     const code = readFileSync(csfToTest, { encoding: 'utf-8' })
-    const storiesInCsf = parseCsf(code, csfToTest, csfPatterns, storybookConfigDirectory)
+    const storiesInCsf = await parseCsf(code, csfToTest, csfPatterns, storybookConfigDirectory)
     const jestTest = generateJestTest(csfToTest, storiesInCsf)
 
     // make spec path unique by mirroring the CSF relative path under .detox-tests
@@ -41,19 +39,50 @@ export function generateTests ({
   return { csfsToTest }
 }
 
-function getCsfPatterns (configDir: string) {
-  // Typescript config is not supported.
-  const mainConfig = serverRequire(join(configDir, 'main')) as Partial<StorybookConfig> | undefined
-  if (!mainConfig) {
+async function getCsfPatterns (configDir: string, projectRoot: string) {
+  const { loadMainConfig } = await loadStorybookCommon()
+  let mainConfig: { stories?: StoriesConfig } | undefined
+
+  try {
+    mainConfig = await loadMainConfig({ configDir, cwd: projectRoot })
+  } catch {
     throw new Error(`Could not load main.js in ${configDir}.`)
   }
-  if (!mainConfig.stories || mainConfig.stories.length === 0) {
-    throw new Error(`Could not find stories in main.js in "${configDir}".`)
-  }
-  return mainConfig.stories as StoriesEntry[]
+
+  return await resolveStories(mainConfig?.stories, configDir, projectRoot)
 }
 
-function parseCsf (code: string, csfFilePath: string, csfPatterns: StoriesEntry[], storybookConfigDirectory: string) {
+async function resolveStories (
+  stories: StoriesConfig | undefined,
+  storybookConfigDirectory: string,
+  projectRoot: string
+) {
+  if (typeof stories === 'function') {
+    let resolvedStories: unknown
+
+    try {
+      resolvedStories = await stories([], { configDir: storybookConfigDirectory, cwd: projectRoot })
+    } catch (error: any) {
+      throw new Error(`Could not load stories from main.js in "${storybookConfigDirectory}": ${error?.message ?? String(error)}`)
+    }
+
+    return validateStories(resolvedStories, storybookConfigDirectory)
+  }
+
+  return validateStories(stories, storybookConfigDirectory)
+}
+
+function validateStories (stories: unknown, storybookConfigDirectory: string) {
+  if (!Array.isArray(stories) || stories.length === 0) {
+    throw new Error(`Could not find stories in main.js in "${storybookConfigDirectory}".`)
+  }
+
+  return stories as StoriesEntry[]
+}
+
+async function parseCsf (code: string, csfFilePath: string, csfPatterns: StoriesEntry[], storybookConfigDirectory: string) {
+  const { getStoryTitle } = await loadStorybookCommon()
+  const { loadCsf } = await loadStorybookCsfTools()
   const csf = loadCsf(code, {
     fileName: csfFilePath,
     makeTitle (userTitle) {

@@ -19,14 +19,15 @@ test('given generated CSF list, then jest config points Detox at generated specs
     '/tmp/project/src/Button.stories.tsx',
     '/tmp/project/src/foo+(bar).stories.tsx'
   ]
-  const generateTests = jest.fn(() => ({ csfsToTest }))
+  const generateTests = jest.fn(async () => ({ csfsToTest }))
   const getDirectories = jest.fn(() => directories)
 
   jest.doMock('../get-directories', () => ({ getDirectories }))
   jest.doMock('../test-generator/generate-tests', () => ({ generateTests }))
 
   // When
-  const { default: config } = await import('./jest.config')
+  const { default: createJestConfig } = require('./jest.config') as typeof import('./jest.config')
+  const config = await createJestConfig()
 
   // Then
   expect(getDirectories).toHaveBeenCalledTimes(1)
