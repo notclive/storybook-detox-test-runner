@@ -109,6 +109,23 @@ test('given no render event is received, then changeStory rejects on timeout', a
   await expect(changeStory).rejects.toThrow('App timed out changing stories: components-button--primary')
 })
 
+test('given the websocket port is already in use, then prepareChannel rejects with setup guidance', async () => {
+  const blockingServer = createServer()
+  const port = await listenOnFreePort(blockingServer)
+  const { channel } = await importChannel(port, 250)
+
+  try {
+    await expect(channel.prepareChannel()).rejects.toThrow(
+      `Storybook Detox WebSocket server could not start on port ${port}: port is already in use.`
+    )
+    await expect(channel.prepareChannel()).rejects.toThrow('withStorybook({ websockets })')
+  } finally {
+    await closeServer(blockingServer)
+  }
+
+  await expect(channel.prepareChannel()).resolves.toBeUndefined()
+})
+
 async function setupOpenChannel ({
   changeStoryTimeoutMs = 250
 }: {
@@ -162,6 +179,24 @@ async function getFreePort () {
       }
 
       server.close(() => resolve(address.port))
+    })
+  })
+}
+
+async function listenOnFreePort (server: ReturnType<typeof createServer>) {
+  return await new Promise<number>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, () => {
+      server.off('error', reject)
+
+      const address = server.address()
+
+      if (!address || typeof address === 'string') {
+        reject(new Error('Could not allocate a test port'))
+        return
+      }
+
+      resolve(address.port)
     })
   })
 }
@@ -232,6 +267,23 @@ async function closeClient (client: WebSocket) {
     })
 
     client.close()
+  })
+}
+
+async function closeServer (server: ReturnType<typeof createServer>) {
+  if (!server.listening) {
+    return
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
   })
 }
 
