@@ -5,7 +5,7 @@ This project enables you to test your [Storybook for React Native](https://githu
 ## How it works
 
 The test runner injects itself into your Detox tests by overriding the Jest configuration.
-Before the tests run it generates Jest test files for your Storybook story files. Generated spec files are written into `<STORYBOOK_CONFIG_DIR>/.detox-tests`, mirroring the relative path of each story file. This avoids filename collisions when multiple stories share the same basename (for example `index.stories.tsx`).
+Before the tests run it generates Jest test files for your Storybook story files. Generated spec files are written into the selected Storybook config directory under `.detox-tests`, mirroring the relative path of each story file. This avoids filename collisions when multiple stories share the same basename (for example `index.stories.tsx`).
 
 > [!NOTE]
 > The generated Jest test name uses the Storybook `story.id` to ensure uniqueness across different files (for example multiple `Default` stories).
@@ -29,7 +29,7 @@ yarn add -D storybook-detox-test-runner
 2. Ensure that Storybook, running on your app, has websockets enabled
 
 ```typescript
-// .storybook/index.js
+// .rnstorybook/index.js
 ...
 const StorybookUIRoot = view.getStorybookUI({
   enableWebsockets: true
@@ -69,16 +69,23 @@ module.exports = {
   ...
 ```
 
-4. Add `.storybook/.detox-tests` to your `.gitignore`
+4. Add the generated test directories to your `.gitignore`
+
+```gitignore
+.rnstorybook/.detox-tests
+.storybook/.detox-tests
+```
 
 The test runner generates tests in your Storybook config directory, these don't need to be committed to source control.
 
-> [!NOTE] This assumes your Storybook config directory is `.storybook`
+> [!NOTE] React Native Storybook 9+ uses `.rnstorybook` by default.
 >
-> If you use a different directory, declare the environment variable `STORYBOOK_CONFIG_DIR` when running the tests.
+> Existing `.storybook` config directories are still supported. If `.rnstorybook` is not found, the test runner falls back to `.storybook`.
+>
+> You can also force a specific directory with `STORYBOOK_CONFIG_DIR` when running the tests.
 >
 > ```sh
-> STORYBOOK_CONFIG_DIR=custom-dir yarn detox test
+> STORYBOOK_CONFIG_DIR=.storybook yarn detox test
 > ```
 
 5. Build your test app with `yarn detox build`
@@ -146,7 +153,7 @@ export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Cou
 
 | Variable                            | Default      | Description                                                                     |
 | ----------------------------------- | ------------ | ------------------------------------------------------------------------------- |
-| `STORYBOOK_CONFIG_DIR`              | `.storybook` | Storybook config directory. Generated tests are written to `<dir>/.detox-tests` |
+| `STORYBOOK_CONFIG_DIR`              | autodetect, fallback `.rnstorybook` | Storybook config directory. When unset, `.rnstorybook` is preferred, then `.storybook`; generated tests are written to `<dir>/.detox-tests` |
 | `STORYBOOK_WS_PORT`                 | `7007`       | WebSocket server port for communication between test runner and device          |
 | `STORYBOOK_WS_CONNECT_TIMEOUT_MS`   | `60000`      | Timeout (ms) waiting for device to connect. Increase if app startup is slow     |
 | `STORYBOOK_CHANGE_STORY_TIMEOUT_MS` | `20000`      | Timeout (ms) waiting for story to render after switching                        |
