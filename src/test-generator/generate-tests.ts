@@ -1,6 +1,13 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { basename, dirname, extname, join, relative } from 'path'
 import { loadStorybookCommon, loadStorybookCsfTools, type StaticStory, type StoriesConfig, type StoriesEntry } from '../storybook-internals'
+import {
+  createMixedFactoryDetection,
+  detectUnsupportedCsfNext,
+  getFactoryStoryExportsFromAst,
+  isMixedFactoryError,
+  UnsupportedCsfNextError
+} from './csf-format'
 import { findStoriesToTest as findCsfsToTest } from './find-stories-to-test'
 
 export async function generateTests ({
@@ -13,14 +20,11 @@ export async function generateTests ({
   testDirectory: string;
 }) {
   const csfPatterns = await getCsfPatterns(storybookConfigDirectory, projectRoot)
-
-  rmSync(testDirectory, { recursive: true, force: true })
-  mkdirSync(testDirectory, { recursive: true })
-
   const csfsToTest = await findCsfsToTest(
     csfPatterns,
     { projectRoot, storybookConfigDirectory }
   )
+  const generatedTests: Array<{ outDir: string, outFile: string, jestTest: string }> = []
 
   for (const csfToTest of csfsToTest) {
     const code = readFileSync(csfToTest, { encoding: 'utf-8' })
@@ -29,10 +33,18 @@ export async function generateTests ({
 
     // make spec path unique by mirroring the CSF relative path under .detox-tests
     const relCsfPath = relative(projectRoot, csfToTest)
-    const outDir = join(testDirectory, dirname(relCsfPath))
-    mkdirSync(outDir, { recursive: true })
+    generatedTests.push({
+      outDir: join(testDirectory, dirname(relCsfPath)),
+      outFile: join(testDirectory, dirname(relCsfPath), `${basename(csfToTest, extname(csfToTest))}.spec.js`),
+      jestTest
+    })
+  }
 
-    const outFile = join(outDir, `${basename(csfToTest, extname(csfToTest))}.spec.js`)
+  rmSync(testDirectory, { recursive: true, force: true })
+  mkdirSync(testDirectory, { recursive: true })
+
+  for (const { outDir, outFile, jestTest } of generatedTests) {
+    mkdirSync(outDir, { recursive: true })
     writeFileSync(outFile, jestTest)
   }
 
@@ -94,8 +106,35 @@ async function parseCsf (code: string, csfFilePath: string, csfPatterns: Stories
       }) || 'unknown'
     }
   })
-  const { _stories } = csf.parse()
-  return _stories
+  const fallbackFactoryStoryExports = getFactoryStoryExportsFromAst(csf)
+  let parsed
+
+  try {
+    parsed = csf.parse()
+  } catch (error) {
+    if (isMixedFactoryError(error)) {
+      throw new UnsupportedCsfNextError(
+        createMixedFactoryDetection(csfFilePath, fallbackFactoryStoryExports),
+        error
+      )
+    }
+
+    const unsupportedCsfNext = detectUnsupportedCsfNext(csf, undefined, csfFilePath, fallbackFactoryStoryExports)
+
+    if (unsupportedCsfNext) {
+      throw new UnsupportedCsfNextError(unsupportedCsfNext, error)
+    }
+
+    throw error
+  }
+
+  const unsupportedCsfNext = detectUnsupportedCsfNext(csf, parsed, csfFilePath, fallbackFactoryStoryExports)
+
+  if (unsupportedCsfNext) {
+    throw new UnsupportedCsfNextError(unsupportedCsfNext)
+  }
+
+  return parsed._stories
 }
 
 function generateJestTest (csfFilePath: string, stories: Record<string, StaticStory>) {

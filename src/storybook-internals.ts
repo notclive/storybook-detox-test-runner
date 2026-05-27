@@ -9,6 +9,9 @@ export type StoriesEntry = string | StoriesSpecifier
 export type StaticStory = {
   id: string
   name: string
+  __stats?: {
+    factory?: boolean
+  } & Record<string, unknown>
 }
 
 type NormalizedStoriesSpecifier = Required<StoriesSpecifier> & {
@@ -39,11 +42,20 @@ type StorybookCsfTools = {
   loadCsf: (code: string, options: {
     fileName: string
     makeTitle: (userTitle?: string) => string
-  }) => {
-    parse: () => {
-      _stories: Record<string, StaticStory>
-    }
-  }
+  }) => StorybookCsfFile
+}
+
+export type StorybookCsfFile = {
+  _ast?: unknown
+  _metaIsFactory?: boolean
+  _stories?: Record<string, StaticStory>
+  parse: () => StorybookCsfParseResult
+}
+
+export type StorybookCsfParseResult = {
+  _ast?: unknown
+  _metaIsFactory?: boolean
+  _stories: Record<string, StaticStory>
 }
 
 export type StoriesConfig = StoriesEntry[] | ((

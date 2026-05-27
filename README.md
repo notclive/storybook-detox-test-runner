@@ -17,6 +17,13 @@ Each test uses the Storybook WebSocket channel to render the appropriate story, 
 - Storybook 9 and 10 are supported.
 - TypeScript users need TypeScript 5.3 or newer because the public types use `resolution-mode` import attributes for Storybook ESM types.
 
+# Supported story formats
+
+- CSF3 object stories are supported for Detox tests.
+- CSF Next / factory stories are not supported yet.
+
+Detox test stories should use CSF3 object exports because the generated specs call `story.Export.detox` and `story.Export.play`. If a story file uses CSF Next / factory stories, the runner stops with an `Unsupported CSF Next/factory stories` error instead of generating an incorrect spec.
+
 # Getting started
 
 1. Install `storybook-detox-test-runner`
@@ -219,3 +226,4 @@ export const WhenIClickOnTheCounterThenTheNumberGoesUp: DetoxStoryObj<typeof Cou
 | Port `7007` is already in use | Stop the other server, or change both `STORYBOOK_WS_PORT` and `getStorybookUI({ port })`. Also check that React Native Storybook is not starting its own channel server through `withStorybook({ websockets: 'auto' })`. |
 | Android cannot connect | The runner calls `device.reverseTcpPort(STORYBOOK_WS_PORT)`. Keep the app port equal to `STORYBOOK_WS_PORT`; `127.0.0.1` is usually the right Android host for Detox. |
 | Wrong config directory | RN Storybook 9+ defaults to `.rnstorybook`. Use `STORYBOOK_CONFIG_DIR=.storybook` only for legacy/custom projects. |
+| Unsupported CSF Next/factory stories | Convert Detox-tested stories to CSF3 object stories. CSF Next / factory stories are not supported by the runner yet. |

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { mockStorybookInternals, restoreStorybookInternalsMock } from '../storybook-internals.spec-support'
+import { UnsupportedCsfNextError } from './csf-format'
 import { generateTests } from './generate-tests'
 
 const tempProjects: string[] = []
@@ -71,6 +72,89 @@ test('given stories with the same basename in different directories, then output
   // Then
   expect(existsSync(join(project.directories.testDirectory, 'src/a/Button.stories.spec.js'))).toBe(true)
   expect(existsSync(join(project.directories.testDirectory, 'src/b/Button.stories.spec.js'))).toBe(true)
+})
+
+test('given CSF Next factory story, then a readable unsupported format error is thrown', async () => {
+  // Given
+  const project = createTempProject()
+  const storyFile = project.writeStory('src/Button.stories.tsx', `
+    import preview from '../.storybook/preview'
+
+    const meta = preview.meta({
+      title: 'Components/Button'
+    })
+
+    export const Primary = meta.story({
+      name: 'Primary button'
+    })
+  `)
+
+  // When
+  const error = await captureGenerateTestsError(project)
+
+  // Then
+  expect(error).toBeInstanceOf(UnsupportedCsfNextError)
+  expect((error as Error).message).toContain(`Unsupported CSF Next/factory stories in "${storyFile}".`)
+  expect((error as Error).message).toContain('Unsupported story export(s): Primary')
+  expect((error as Error).message).toContain('Use CSF3 object stories for Detox tests')
+  expect(existsSync(join(project.directories.testDirectory, 'src/Button.stories.spec.js'))).toBe(false)
+})
+
+test('given mixed factory and non-factory stories, then the whole file is rejected with a readable error', async () => {
+  // Given
+  const project = createTempProject()
+  const storyFile = project.writeStory('src/Button.stories.tsx', `
+    import preview from '../.storybook/preview'
+
+    const meta = preview.meta({
+      title: 'Components/Button'
+    })
+
+    export const Primary = meta.story({
+      name: 'Primary button'
+    })
+
+    export const Secondary = {
+      name: 'Secondary button'
+    }
+  `)
+
+  // When
+  const error = await captureGenerateTestsError(project)
+
+  // Then
+  expect(error).toBeInstanceOf(UnsupportedCsfNextError)
+  expect((error as Error).message).toContain(`Unsupported CSF Next/factory stories in "${storyFile}".`)
+  expect((error as Error).message).toContain('Storybook reported mixed factory and non-factory stories in this file.')
+  expect((error as Error).message).toContain('Unsupported story export(s): Primary')
+  expect(existsSync(join(project.directories.testDirectory, 'src/Button.stories.spec.js'))).toBe(false)
+})
+
+test('given a valid file before an unsupported CSF Next file, then no partial specs are written', async () => {
+  // Given
+  const project = createTempProject({
+    mainSource: "module.exports = { stories: ['../src/AValid.stories.tsx', '../src/ZFactory.stories.tsx'] }\n"
+  })
+  project.writeStory('src/AValid.stories.tsx', storySource('Components/AValid'))
+  project.writeStory('src/ZFactory.stories.tsx', `
+    import preview from '../.storybook/preview'
+
+    const meta = preview.meta({
+      title: 'Components/ZFactory'
+    })
+
+    export const Primary = meta.story({
+      name: 'Primary button'
+    })
+  `)
+
+  // When
+  const error = await captureGenerateTestsError(project)
+
+  // Then
+  expect(error).toBeInstanceOf(UnsupportedCsfNextError)
+  expect(existsSync(join(project.directories.testDirectory, 'src/AValid.stories.spec.js'))).toBe(false)
+  expect(existsSync(join(project.directories.testDirectory, 'src/ZFactory.stories.spec.js'))).toBe(false)
 })
 
 test('given main.js stories is a function, then specs are generated from resolved stories', async () => {
@@ -193,6 +277,24 @@ function readGeneratedSpec (
   relativePath: string
 ) {
   return readFileSync(join(project.directories.testDirectory, relativePath), 'utf-8')
+}
+
+async function captureGenerateTestsError (
+  project: ReturnType<typeof createTempProject>
+) {
+  let capturedError: unknown
+
+  try {
+    await generateTests(project.directories)
+  } catch (error) {
+    capturedError = error
+  }
+
+  if (!capturedError) {
+    throw new Error('Expected generateTests to throw')
+  }
+
+  return capturedError
 }
 
 function storySource (title: string) {
