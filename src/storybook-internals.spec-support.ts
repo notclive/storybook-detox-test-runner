@@ -153,6 +153,7 @@ function createCsfAst(code: string) {
   let match: RegExpExecArray | null
 
   if (metaVariableName) {
+    body.push(importDeclaration('preview', '../.storybook/preview'))
     body.push(variableDeclaration(metaVariableName, callExpression(memberExpression(identifier('preview'), 'meta'))))
   }
 
@@ -180,6 +181,22 @@ function createCsfAst(code: string) {
     program: {
       type: 'Program',
       body
+    }
+  }
+}
+
+function importDeclaration (localName: string, source: string) {
+  return {
+    type: 'ImportDeclaration',
+    specifiers: [
+      {
+        type: 'ImportDefaultSpecifier',
+        local: identifier(localName)
+      }
+    ],
+    source: {
+      type: 'StringLiteral',
+      value: source
     }
   }
 }

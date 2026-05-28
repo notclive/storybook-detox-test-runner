@@ -98,6 +98,7 @@ export function isMixedFactoryError (error: unknown) {
 
 export function getFactoryStoryExportsFromAst (csf: StorybookCsfFile) {
   const ast = csf._ast
+  const previewConfigImports = getPreviewConfigImportNames(ast)
   const factoryMetaVariables = new Set<string>()
   const factoryStoryVariables = new Set<string>()
   const factoryStoryExports = new Set<string>()
@@ -109,7 +110,7 @@ export function getFactoryStoryExportsFromAst (csf: StorybookCsfFile) {
 
     const init = unwrapExpression(node.init)
 
-    if (isMetaFactoryCall(init)) {
+    if (isMetaFactoryCall(init, previewConfigImports)) {
       factoryMetaVariables.add(node.id.name)
     }
   })
@@ -121,7 +122,7 @@ export function getFactoryStoryExportsFromAst (csf: StorybookCsfFile) {
 
     const init = unwrapExpression(node.init)
 
-    if (isFactoryStoryCall(init, factoryMetaVariables)) {
+    if (isFactoryStoryCall(init, factoryMetaVariables, previewConfigImports)) {
       factoryStoryVariables.add(node.id.name)
     }
   })
@@ -139,7 +140,7 @@ export function getFactoryStoryExportsFromAst (csf: StorybookCsfFile) {
           continue
         }
 
-        if (isFactoryStoryCall(unwrapExpression(declarator.init), factoryMetaVariables)) {
+        if (isFactoryStoryCall(unwrapExpression(declarator.init), factoryMetaVariables, previewConfigImports)) {
           factoryStoryExports.add(declarator.id.name)
         }
       }
@@ -161,6 +162,30 @@ export function getFactoryStoryExportsFromAst (csf: StorybookCsfFile) {
   })
 
   return Array.from(factoryStoryExports)
+}
+
+function getPreviewConfigImportNames (ast: unknown) {
+  const imports = new Set<string>()
+
+  traverseAst(ast, node => {
+    if (node.type !== 'ImportDeclaration' || !hasImportSource(node.source) || !Array.isArray(node.specifiers)) {
+      return
+    }
+
+    if (!isPreviewConfigImport(node.source.value)) {
+      return
+    }
+
+    for (const specifier of node.specifiers) {
+      if (!isNode(specifier) || !isIdentifier(specifier.local)) {
+        continue
+      }
+
+      imports.add(specifier.local.name)
+    }
+  })
+
+  return imports
 }
 
 function getFactoryStoryExportsFromStories (stories: Record<string, StaticStory> | undefined) {
@@ -231,7 +256,11 @@ function unwrapExpression (value: unknown): unknown {
   return current
 }
 
-function isFactoryStoryCall (value: unknown, factoryMetaVariables: Set<string>) {
+function isFactoryStoryCall (
+  value: unknown,
+  factoryMetaVariables: Set<string>,
+  previewConfigImports: Set<string>
+) {
   if (!isNode(value) || value.type !== 'CallExpression' || !isMemberExpression(value.callee)) {
     return false
   }
@@ -242,15 +271,17 @@ function isFactoryStoryCall (value: unknown, factoryMetaVariables: Set<string>) 
 
   return (
     (isIdentifier(value.callee.object) && factoryMetaVariables.has(value.callee.object.name)) ||
-    isMetaFactoryCall(value.callee.object)
+    isMetaFactoryCall(value.callee.object, previewConfigImports)
   )
 }
 
-function isMetaFactoryCall (value: unknown) {
+function isMetaFactoryCall (value: unknown, previewConfigImports: Set<string>) {
   return (
     isNode(value) &&
     value.type === 'CallExpression' &&
     isMemberExpression(value.callee) &&
+    isIdentifier(value.callee.object) &&
+    previewConfigImports.has(value.callee.object.name) &&
     isPropertyNamed(value.callee.property, 'meta')
   )
 }
@@ -267,6 +298,10 @@ function isIdentifier (value: unknown): value is AstNode & { name: string } {
   return isNode(value) && value.type === 'Identifier' && typeof value.name === 'string'
 }
 
+function hasImportSource (value: unknown): value is AstNode & { value: string } {
+  return isNode(value) && typeof value.value === 'string'
+}
+
 function isPropertyNamed (value: unknown, name: string) {
   return (
     (isIdentifier(value) && value.name === name) ||
@@ -276,6 +311,10 @@ function isPropertyNamed (value: unknown, name: string) {
       value.value === name
     )
   )
+}
+
+function isPreviewConfigImport (value: string) {
+  return /(^|\/)\.(?:rn)?storybook\/preview(?:\.[cm]?[jt]sx?)?$/.test(value)
 }
 
 function isNode (value: unknown): value is AstNode {

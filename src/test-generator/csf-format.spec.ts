@@ -14,6 +14,14 @@ test('given an exported meta.story call in AST, then factory story export is det
   expect(getFactoryStoryExportsFromAst(csf)).toEqual(['Primary'])
 })
 
+test('given an exported story call from a non-preview import, then factory story export is not detected', () => {
+  // Given
+  const csf = csfFileWithAst(foreignDslStoryAst('Primary'))
+
+  // When / Then
+  expect(getFactoryStoryExportsFromAst(csf)).toEqual([])
+})
+
 test('given parsed CSF3 object story stats, then unsupported CSF Next is not detected', () => {
   // Given
   const csf = csfFileWithAst(emptyAst())
@@ -117,6 +125,7 @@ function factoryStoryAst (storyExportName: string) {
     program: {
       type: 'Program',
       body: [
+        importDeclaration('preview', '../.storybook/preview'),
         variableDeclaration('meta', callExpression(memberExpression(identifier('preview'), 'meta'))),
         {
           type: 'ExportNamedDeclaration',
@@ -124,6 +133,40 @@ function factoryStoryAst (storyExportName: string) {
           specifiers: []
         }
       ]
+    }
+  }
+}
+
+function foreignDslStoryAst (storyExportName: string) {
+  return {
+    type: 'File',
+    program: {
+      type: 'Program',
+      body: [
+        importDeclaration('foo', '../dsl/foo'),
+        variableDeclaration('meta', callExpression(memberExpression(identifier('foo'), 'meta'))),
+        {
+          type: 'ExportNamedDeclaration',
+          declaration: variableDeclaration(storyExportName, callExpression(memberExpression(identifier('meta'), 'story'))),
+          specifiers: []
+        }
+      ]
+    }
+  }
+}
+
+function importDeclaration (localName: string, source: string) {
+  return {
+    type: 'ImportDeclaration',
+    specifiers: [
+      {
+        type: 'ImportDefaultSpecifier',
+        local: identifier(localName)
+      }
+    ],
+    source: {
+      type: 'StringLiteral',
+      value: source
     }
   }
 }

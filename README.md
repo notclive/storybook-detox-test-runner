@@ -22,7 +22,7 @@ Each test uses the Storybook WebSocket channel to render the appropriate story, 
 - CSF3 object stories are supported for Detox tests.
 - CSF Next / factory stories are not supported yet.
 
-Detox test stories should use CSF3 object exports because the generated specs call `story.Export.detox` and `story.Export.play`. If a story file uses CSF Next / factory stories, the runner stops with an `Unsupported CSF Next/factory stories` error instead of generating an incorrect spec.
+Detox test stories should use CSF3 object exports because the generated specs call `story.<ExportName>.detox` and `story.<ExportName>.play`. If a story file uses CSF Next / factory stories, the runner stops with an `Unsupported CSF Next/factory stories` error instead of generating an incorrect spec.
 
 # Getting started
 

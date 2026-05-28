@@ -124,6 +124,7 @@ test('given mixed factory and non-factory stories, then the whole file is reject
 
   // Then
   expect(error).toBeInstanceOf(UnsupportedCsfNextError)
+  expect((error as UnsupportedCsfNextError).cause).toMatchObject({ name: 'MixedFactoryError' })
   expect((error as Error).message).toContain(`Unsupported CSF Next/factory stories in "${storyFile}".`)
   expect((error as Error).message).toContain('Storybook reported mixed factory and non-factory stories in this file.')
   expect((error as Error).message).toContain('Unsupported story export(s): Primary')
