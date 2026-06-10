@@ -1,6 +1,6 @@
 import type detox from 'detox'
 import type { ComponentProps, ComponentType } from 'react'
-import type { Args, Renderer, StoryAnnotations, StoryContext } from 'storybook/internal/types'
+import type { Args, Renderer, StoryAnnotations, StoryContext } from 'storybook/internal/types' with { 'resolution-mode': 'import' }
 
 // I've:
 // 1) Taken the definition of StoryObj from @storybook/react

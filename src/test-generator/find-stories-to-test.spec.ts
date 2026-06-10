@@ -1,12 +1,18 @@
-import { afterEach, expect, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import mockFilesystem from 'mock-fs'
+import { mockStorybookInternals, restoreStorybookInternalsMock } from '../storybook-internals.spec-support'
 import { findStoriesToTest } from './find-stories-to-test'
 
+beforeEach(() => {
+  mockStorybookInternals()
+})
+
 afterEach(() => {
+  restoreStorybookInternalsMock()
   mockFilesystem.restore()
 })
 
-test('given files match pattern, then they are found', () => {
+test('given files match pattern, then they are found', async () => {
   // Given
   mockFilesystem({
     '/users/foo/projects/bar/src/folder/not-a-story.ts': '',
@@ -15,7 +21,7 @@ test('given files match pattern, then they are found', () => {
   })
 
   // When
-  const storiesToTest = findStoriesToTest(
+  const storiesToTest = await findStoriesToTest(
     ['../src/**/*.stories.?(ts|tsx|js|jsx)'],
     { storybookConfigDirectory: '/users/foo/projects/bar/.storybook', projectRoot: '/users/foo/projects/bar' }
   )
@@ -27,12 +33,12 @@ test('given files match pattern, then they are found', () => {
   ])
 })
 
-test('given file matches multiple patterns, then it is only found once', () => {
+test('given file matches multiple patterns, then it is only found once', async () => {
   // Given
   mockFilesystem({ '/users/foo/projects/bar/src/folder/file-to-test.stories.ts': '' })
 
   // When
-  const storiesToTest = findStoriesToTest(
+  const storiesToTest = await findStoriesToTest(
     ['../src/**/*.stories.?(ts|tsx|js|jsx)', '../src/folder/file-to-test.stories.ts'],
     { storybookConfigDirectory: '/users/foo/projects/bar/.storybook', projectRoot: '/users/foo/projects/bar' }
   )
@@ -43,7 +49,7 @@ test('given file matches multiple patterns, then it is only found once', () => {
   ])
 })
 
-test('given file matches pattern but not relative to storybook config directory, then it is not found', () => {
+test('given file matches pattern but not relative to storybook config directory, then it is not found', async () => {
   // Given
   mockFilesystem({
     '/users/foo/projects/bar/src/folder/file-to-test.stories.ts': '',
@@ -51,7 +57,7 @@ test('given file matches pattern but not relative to storybook config directory,
   })
 
   // When
-  const storiesToTest = findStoriesToTest(
+  const storiesToTest = await findStoriesToTest(
     ['../src/folder/*.stories.ts'],
     { storybookConfigDirectory: '/users/foo/projects/bar/.storybook', projectRoot: '/users/foo/projects/bar' }
   )

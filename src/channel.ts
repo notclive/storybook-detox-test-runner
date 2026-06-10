@@ -1,13 +1,11 @@
 import { device } from 'detox'
-import events, {
-  CHANNEL_CREATED,
-  SET_CURRENT_STORY,
-  STORY_RENDERED,
-  STORY_THREW_EXCEPTION,
-  STORY_UNCHANGED,
-} from 'storybook/internal/core-events'
 import { WebSocket, WebSocketServer } from 'ws'
 
+const CHANNEL_CREATED = 'channelCreated'
+const SET_CURRENT_STORY = 'setCurrentStory'
+const STORY_RENDERED = 'storyRendered'
+const STORY_THREW_EXCEPTION = 'storyThrewException'
+const STORY_UNCHANGED = 'storyUnchanged'
 const WS_OPEN = 1
 const PORT = Number(process.env.STORYBOOK_WS_PORT || 7007)
 const DEBUG = process.env.STORYBOOK_CHANNEL_DEBUG === '1'
@@ -38,7 +36,7 @@ type PendingStoryRender = {
 }
 
 type Message = {
-  type: events
+  type: string
   from?: string
   args?: any[]
 }
@@ -238,6 +236,20 @@ function attachClientSocket(socket: WebSocket) {
   })
 }
 
+function createServerStartError(error: any) {
+  const message = error?.message ?? String(error)
+
+  if (error?.code === 'EADDRINUSE') {
+    return new Error(
+      `Storybook Detox WebSocket server could not start on port ${PORT}: port is already in use. ` +
+      'Set STORYBOOK_WS_PORT to a free port, make getStorybookUI({ port }) use the same port, ' +
+      'and disable React Native Storybook withStorybook({ websockets }) while using this runner.'
+    )
+  }
+
+  return new Error(`Storybook Detox WebSocket server could not start on port ${PORT}: ${message}`)
+}
+
 // Idempotent server start: multiple spec files call prepareChannel() in beforeAll,
 // but we need exactly one WebSocket server per Jest process to avoid port conflicts.
 async function ensureServerStarted() {
@@ -252,19 +264,51 @@ async function ensureServerStarted() {
       return
     }
 
-    const server = new WebSocketServer({ port: PORT })
-    channel.server = server
+    await new Promise<void>((resolve, reject) => {
+      let server: WebSocketServer
 
-    server.on('connection', (socket: WebSocket) => {
-      log('client connected')
-      attachClientSocket(socket)
+      const fail = (error: any) => {
+        channel.server = undefined
+        channel.serverPromise = null
+        reject(createServerStartError(error))
+      }
+
+      try {
+        server = new WebSocketServer({ port: PORT })
+      } catch (error) {
+        fail(error)
+        return
+      }
+
+      channel.server = server
+
+      const cleanupStartupListeners = () => {
+        server.off('listening', onListening)
+        server.off('error', onStartupError)
+      }
+      const onListening = () => {
+        cleanupStartupListeners()
+
+        server.on('error', (error: any) => {
+          log('server error:', error?.message ?? error)
+        })
+
+        log('server started on port', PORT)
+        resolve()
+      }
+      const onStartupError = (error: any) => {
+        cleanupStartupListeners()
+        fail(error)
+      }
+
+      server.on('connection', (socket: WebSocket) => {
+        log('client connected')
+        attachClientSocket(socket)
+      })
+
+      server.once('listening', onListening)
+      server.once('error', onStartupError)
     })
-
-    server.on('error', (error: any) => {
-      log('server error:', error?.message ?? error)
-    })
-
-    log('server started on port', PORT)
   })()
 
   return channel.serverPromise

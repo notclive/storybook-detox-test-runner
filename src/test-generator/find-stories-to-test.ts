@@ -1,12 +1,12 @@
 import fs from 'fs'
 import { join, relative } from 'path'
-import { normalizeStories, normalizeStoryPath } from 'storybook/internal/common'
-import type { StoriesEntry } from 'storybook/internal/types'
+import { loadStorybookCommon, type StoriesEntry } from '../storybook-internals'
 
-export function findStoriesToTest (
+export async function findStoriesToTest (
   stories: StoriesEntry[],
   { projectRoot, storybookConfigDirectory }: { projectRoot: string, storybookConfigDirectory: string }
 ) {
+  const { normalizeStories, normalizeStoryPath } = await loadStorybookCommon()
   const normalizedStories = normalizeStories(stories, { configDir: storybookConfigDirectory, workingDir: projectRoot })
   const storiesToTestWithDuplicates = normalizedStories.flatMap(({ directory, importPathMatcher }) => {
     return fs.readdirSync(join(projectRoot, directory), { recursive: true, withFileTypes: true })
