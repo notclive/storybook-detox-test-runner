@@ -100,8 +100,9 @@ test('given CSF Next factory story, then a readable unsupported format error is 
   expect(existsSync(join(project.directories.testDirectory, 'src/Button.stories.spec.js'))).toBe(false)
 })
 
-test('given mixed factory and non-factory stories, then the whole file is rejected with a readable error', async () => {
+test.each(['babel', 'estree'] as const)('given mixed factory and non-factory stories with the %s csf-tools, then the whole file is rejected with a readable error', async csfTools => {
   // Given
+  mockStorybookInternals({ csfTools })
   const project = createTempProject()
   const storyFile = project.writeStory('src/Button.stories.tsx', `
     import preview from '../.storybook/preview'

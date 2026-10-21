@@ -1,10 +1,10 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { basename, dirname, extname, join, relative } from 'path'
 import { loadStorybookCommon, loadStorybookCsfTools, type StaticStory, type StoriesConfig, type StoriesEntry } from '../storybook-internals'
+import { loadCsfAdapter, type CsfAdapter } from './csf-adapter'
 import {
   createMixedFactoryDetection,
   detectUnsupportedCsfNext,
-  getFactoryStoryExportsFromAst,
   isMixedFactoryError,
   UnsupportedCsfNextError
 } from './csf-format'
@@ -24,11 +24,12 @@ export async function generateTests ({
     csfPatterns,
     { projectRoot, storybookConfigDirectory }
   )
+  const csfAdapter = await loadCsfAdapter()
   const generatedTests: Array<{ outDir: string, outFile: string, jestTest: string }> = []
 
   for (const csfToTest of csfsToTest) {
     const code = readFileSync(csfToTest, { encoding: 'utf-8' })
-    const storiesInCsf = await parseCsf(code, csfToTest, csfPatterns, storybookConfigDirectory)
+    const storiesInCsf = await parseCsf(code, csfToTest, csfPatterns, storybookConfigDirectory, csfAdapter)
     const jestTest = generateJestTest(csfToTest, storiesInCsf)
 
     // make spec path unique by mirroring the CSF relative path under .detox-tests
@@ -92,7 +93,13 @@ function validateStories (stories: unknown, storybookConfigDirectory: string) {
   return stories as StoriesEntry[]
 }
 
-async function parseCsf (code: string, csfFilePath: string, csfPatterns: StoriesEntry[], storybookConfigDirectory: string) {
+async function parseCsf (
+  code: string,
+  csfFilePath: string,
+  csfPatterns: StoriesEntry[],
+  storybookConfigDirectory: string,
+  { getFactoryStoryExportsFromAst }: CsfAdapter
+) {
   const { getStoryTitle } = await loadStorybookCommon()
   const { loadCsf } = await loadStorybookCsfTools()
   const csf = loadCsf(code, {

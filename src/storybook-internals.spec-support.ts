@@ -1,7 +1,14 @@
 import { join } from 'path'
 import type { StoriesEntry } from './storybook-internals'
+import type { CsfToolsKind } from './test-generator/csf-adapter.spec-support'
 
-export function mockStorybookInternals() {
+/**
+ * Mocks the Storybook internals. `csfTools` picks which csf-tools are
+ * mocked: the Babel ones of Storybook 9 and 10, which put a Babel `File` on
+ * `csf._ast`, or the ESTree ones of Storybook 11, which export `parseModule`
+ * and put an ESTree `Program` on `csf.program`.
+ */
+export function mockStorybookInternals({ csfTools = 'babel' }: { csfTools?: CsfToolsKind } = {}) {
   (globalThis as any).__STORYBOOK_DETOX_TEST_INTERNALS__ = {
     common: {
       getStoryTitle ({ userTitle }: { userTitle?: string }) {
@@ -20,11 +27,13 @@ export function mockStorybookInternals() {
       }
     },
     csfTools: {
+      ...(csfTools === 'estree' ? { parseModule () {} } : {}),
       loadCsf (code: string, options: { makeTitle: (userTitle?: string) => string }) {
-        const ast = createCsfAst(code)
+        const program = createCsfAst(code, csfTools)
+        const astField = csfTools === 'estree' ? { program } : { _ast: { type: 'File', program } }
 
         return {
-          _ast: ast,
+          ...astField,
           parse () {
             const title = options.makeTitle(parseTitle(code))
             const stories: Record<string, { id: string, name: string, __stats: { factory: boolean } }> = {}
@@ -73,7 +82,7 @@ export function mockStorybookInternals() {
             }
 
             return {
-              _ast: ast,
+              ...astField,
               _metaIsFactory: factoryStories.length > 0,
               _stories: stories
             }
@@ -146,14 +155,14 @@ function parseStoryName(code: string) {
   return /name:\s*['"]([^'"]+)['"]/.exec(code)?.[1]
 }
 
-function createCsfAst(code: string) {
+function createCsfAst(code: string, csfTools: CsfToolsKind) {
   const metaVariableName = /const\s+(\w+)\s*=\s*\w+\.meta\(/.exec(code)?.[1]
   const factoryExportRegex = /export const (\w+)\s*=\s*(\w+)\.story\(/g
   const body: unknown[] = []
   let match: RegExpExecArray | null
 
   if (metaVariableName) {
-    body.push(importDeclaration('preview', '../.storybook/preview'))
+    body.push(importDeclaration('preview', '../.storybook/preview', csfTools === 'estree' ? 'Literal' : 'StringLiteral'))
     body.push(variableDeclaration(metaVariableName, callExpression(memberExpression(identifier('preview'), 'meta'))))
   }
 
@@ -177,15 +186,12 @@ function createCsfAst(code: string) {
   }
 
   return {
-    type: 'File',
-    program: {
-      type: 'Program',
-      body
-    }
+    type: 'Program',
+    body
   }
 }
 
-function importDeclaration (localName: string, source: string) {
+function importDeclaration (localName: string, source: string, sourceType: 'Literal' | 'StringLiteral') {
   return {
     type: 'ImportDeclaration',
     specifiers: [
@@ -195,7 +201,7 @@ function importDeclaration (localName: string, source: string) {
       }
     ],
     source: {
-      type: 'StringLiteral',
+      type: sourceType,
       value: source
     }
   }

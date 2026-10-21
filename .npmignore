@@ -9,3 +9,4 @@ node_modules
 
 # For testing this project, not to be confused with src/jest/jest.config.js
 jest.config.mjs
+jest.global-setup.mjs
